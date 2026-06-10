@@ -393,6 +393,10 @@ async function sendMsg() {
       filtered = lastCar.records;
     }
 
+    // DEBUG VISIVEL
+    const debugVins = [...new Set(sheetData.slice(0,5).map(r => r['VIN']))];
+    addMsg('assistant', `DEBUG — Total registros: ${sheetData.length} | Primeiros VINs: ${debugVins.join(', ')} | Filtrados: ${filtered.length} | Busca: "${q}"`);
+
     // 5. Sem resultado nenhum
     if (!filtered.length) {
       removeTyping(typingId);
