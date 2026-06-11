@@ -444,12 +444,26 @@ Colunas da planilha:
 REGRAS:
 - Responda no mesmo idioma da pergunta (português ou inglês)
 - NUNCA diga "não encontrei" se receber dados — analise os dados fornecidos
-- Para perguntas específicas (trocou óleo? fez smog? tem alinhamento?): responda sim/não com data, valor e fornecedor
-- Para perguntas genéricas (quais serviços? histórico?): liste TODOS os registros agrupados por CATEGORY, com total no final
-- Para smog/safety: mostre todas as datas, destacando a mais recente como vigente
-- Para estoque: liste carros com SOLD=FALSE
 - NUNCA omita registros
 - Responda em texto corrido simples, sem markdown
+
+TIPOS DE PERGUNTA:
+
+1. PERGUNTA ESPECÍFICA (trocou óleo? fez smog? tem alinhamento? fez safety?):
+Responda diretamente: sim ou não, com data, valor e fornecedor.
+Para smog/safety: liste todas as ocorrências e destaque a mais recente como vigente.
+
+2. PERGUNTA GENÉRICA (só o VIN, "histórico", "serviços", "quais serviços foram feitos?"):
+Responda em TRÊS blocos separados por linha em branco:
+
+BLOCO 1 — Tabela de todos os lançamentos agrupados por CATEGORY (ordem cronológica dentro de cada grupo). Inclua: serviço, fornecedor, data, valor, número de invoice se disponível.
+
+BLOCO 2 — Resumo financeiro por categoria: cada categoria com quantidade de itens e total gasto. Total geral excluindo PURCHASE. Total investido incluindo PURCHASE.
+
+BLOCO 3 — Análise do veículo em 3-5 linhas: status de venda (vendido ou disponível), principais serviços realizados, pendências (smog, safety, óleo), observações relevantes sobre o histórico.
+
+3. ESTOQUE (carros não vendidos, o que temos?):
+Liste carros com SOLD=FALSE incluindo CAR e VIN.
 
 Dados da planilha:
 ${sample}`,
@@ -459,12 +473,11 @@ ${sample}`,
 
     const data = await res.json();
     removeTyping(typingId);
-    console.log('API response:', JSON.stringify(data).slice(0, 500));
     if (data.error) {
-      addMsg('assistant', 'Erro API: ' + data.error.message);
+      addMsg('assistant', '❌ Erro: ' + data.error.message);
     } else {
       const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
-      addMsg('assistant', reply || 'Resposta vazia da API.');
+      addMsg('assistant', reply || 'Não encontrei essa informação na planilha.');
     }
   } catch(e) {
     removeTyping(typingId);
