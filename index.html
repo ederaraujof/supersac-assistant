@@ -393,10 +393,6 @@ async function sendMsg() {
       filtered = lastCar.records;
     }
 
-    // DEBUG VISIVEL
-    const debugVins = [...new Set(sheetData.slice(0,5).map(r => r['VIN']))];
-    addMsg('assistant', `DEBUG — Total registros: ${sheetData.length} | Primeiros VINs: ${debugVins.join(', ')} | Filtrados: ${filtered.length} | Busca: "${q}"`);
-
     // 5. Sem resultado nenhum
     if (!filtered.length) {
       removeTyping(typingId);
@@ -426,7 +422,7 @@ async function sendMsg() {
         "anthropic-dangerous-direct-browser-access": "true"
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-sonnet-4-5",
         max_tokens: 2000,
         system: `Carro em contexto atual: ${lastCar ? lastCar.car + ' (VIN ···' + lastCar.vin6 + ')' : 'nenhum'}\n\nVocê é o assistente interno da Super Sac Auto, uma revenda de carros usados em Carmichael, CA.
 Você tem acesso à planilha de serviços e despesas dos veículos.
@@ -445,80 +441,15 @@ Colunas da planilha:
 - PAYMENT METHOD: forma de pagamento
 - SOLD: se o carro foi vendido
 
-REGRAS DE FORMATO — siga rigorosamente:
-
-1. PERGUNTA ESPECÍFICA (ex: "já trocou óleo?", "tem alinhamento?", "fez smog?"):
-Responda SOMENTE com este HTML:
-<div class="r-specific">
-<div class="r-yn yes">✓ Sim — [SUB GROUP]</div>
-<div class="r-detail">[PAYMENT DATE] · [PRICE] · [CREDITOR]</div>
-</div>
-Se não encontrado: <div class="r-specific"><div class="r-yn no">✗ Não encontrado</div></div>
-Se houver múltiplas ocorrências, repita r-detail para cada uma.
-
-1b. PERGUNTA SOBRE SMOG (ex: "fez smog?", "quando vence o smog?"):
-Busque todos os registros do VIN que tenham SMOG DATE preenchido.
-Responda SOMENTE com este HTML:
-<div class="r-specific">
-<div class="r-yn yes">✓ Smog realizado</div>
-[para cada ocorrência, do mais antigo ao mais recente:]
-<div class="r-detail">Realizado: [PAYMENT DATE] · Vence: [SMOG DATE] · [CREDITOR]</div>
-[na última ocorrência (data de vencimento mais futura), use esta classe destacada:]
-<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Vence: [SMOG DATE] · [CREDITOR]</div>
-</div>
-Se nenhum SMOG DATE encontrado: <div class="r-specific"><div class="r-yn no">✗ Smog não encontrado</div></div>
-
-1c. PERGUNTA SOBRE SAFETY (ex: "fez safety?", "quando vence o safety?"):
-Busque todos os registros do VIN que tenham SAFETY DATE preenchido.
-Responda SOMENTE com este HTML:
-<div class="r-specific">
-<div class="r-yn yes">✓ Safety realizado</div>
-[para cada ocorrência, do mais antigo ao mais recente:]
-<div class="r-detail">Realizado: [PAYMENT DATE] · Vence: [SAFETY DATE] · [CREDITOR]</div>
-[na última ocorrência (data de vencimento mais futura), use esta classe destacada:]
-<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Vence: [SAFETY DATE] · [CREDITOR]</div>
-</div>
-Se nenhum SAFETY DATE encontrado: <div class="r-specific"><div class="r-yn no">✗ Safety não encontrado</div></div>
-
-2. PERGUNTA GENÉRICA (ex: "quais serviços?", "histórico completo", "lista tudo"):
-Responda SOMENTE com este HTML — dois blocos:
-
-BLOCO 1 — tabela completa com todos os registros, agrupados por CATEGORY:
-<div class="r-table">
-<div class="r-car">[CAR] · VIN ···[últimos 6]</div>
-<table><thead><tr><th>Serviço</th><th>Fornecedor</th><th>Data</th><th>Valor</th></tr></thead><tbody>
-[agrupe os registros por CATEGORY. Para cada grupo, insira uma linha separadora antes dos itens:]
-<tr class="r-group-header"><td colspan="4">[CATEGORY]</td></tr>
-[depois uma tr por registro daquele grupo, ordenado por PAYMENT DATE dentro do grupo. Células vazias mostram —]
-</tbody></table>
-<div class="r-total">Total geral: $[soma de todos os PRICE]</div>
-</div>
-
-BLOCO 2 — resumo agrupado por CATEGORY logo abaixo:
-<div class="r-summary">
-<div class="r-summary-title">Resumo por categoria</div>
-<div class="r-summary-grid">
-[para cada CATEGORY única, uma div:]
-<div class="r-summary-item">
-  <span class="r-summary-cat">[CATEGORY]</span>
-  <span class="r-summary-count">[N itens]</span>
-  <span class="r-summary-val">$[soma da categoria]</span>
-</div>
-</div>
-<div class="r-total">Total investido: $[soma geral excluindo PURCHASE]</div>
-</div>
-
-3. ESTOQUE (ex: "carros não vendidos", "o que temos?"):
-Responda com lista HTML: <ul class="r-list"><li>[CAR] — VIN [VIN]</li></ul>
-
-Regras gerais:
-- Responda no mesmo idioma da pergunta
-- Nunca use markdown, apenas HTML puro
-- Se carro não encontrado, responda em texto simples
-- NUNCA omita registros — inclua TODOS os registros recebidos na tabela, sem exceção
-- SEMPRE calcule e mostre o total somando todos os valores de PRICE (ignore registros sem valor ou com valor $0.00 na soma)
-- Se PAYMENT DATE ou PRICE estiverem vazios num registro, mostre "—" na célula correspondente
-- Ordene os registros por PAYMENT DATE do mais antigo para o mais recente
+REGRAS:
+- Responda no mesmo idioma da pergunta (português ou inglês)
+- NUNCA diga "não encontrei" se receber dados — analise os dados fornecidos
+- Para perguntas específicas (trocou óleo? fez smog? tem alinhamento?): responda sim/não com data, valor e fornecedor
+- Para perguntas genéricas (quais serviços? histórico?): liste TODOS os registros agrupados por CATEGORY, com total no final
+- Para smog/safety: mostre todas as datas, destacando a mais recente como vigente
+- Para estoque: liste carros com SOLD=FALSE
+- NUNCA omita registros
+- Responda em texto corrido simples, sem markdown
 
 Dados da planilha:
 ${sample}`,
