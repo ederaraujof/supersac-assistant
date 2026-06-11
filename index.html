@@ -459,8 +459,13 @@ ${sample}`,
 
     const data = await res.json();
     removeTyping(typingId);
-    const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
-    addMsg('assistant', reply || 'Não encontrei essa informação na planilha.');
+    console.log('API response:', JSON.stringify(data).slice(0, 500));
+    if (data.error) {
+      addMsg('assistant', 'Erro API: ' + data.error.message);
+    } else {
+      const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+      addMsg('assistant', reply || 'Resposta vazia da API.');
+    }
   } catch(e) {
     removeTyping(typingId);
     addMsg('assistant', '❌ Erro ao consultar. Verifique sua conexão e tente novamente.');
