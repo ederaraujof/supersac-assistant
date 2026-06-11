@@ -456,39 +456,45 @@ Se não encontrado: <div class="r-specific"><div class="r-yn no">✗ Não encont
 Se houver múltiplas ocorrências, repita r-detail para cada uma.
 
 1b. PERGUNTA SOBRE SMOG (ex: "fez smog?", "quando vence o smog?"):
-Busque todos os registros do VIN que tenham SMOG DATE preenchido.
+Busque todos os registros do VIN que tenham SMOG DATE (coluna H) preenchido.
+A data de vencimento do smog = SMOG DATE + 2 anos. Calcule isso para cada ocorrência.
 Responda SOMENTE com este HTML:
 <div class="r-specific">
 <div class="r-yn yes">✓ Smog realizado</div>
 [para cada ocorrência, do mais antigo ao mais recente:]
-<div class="r-detail">Realizado: [PAYMENT DATE] · Vence: [SMOG DATE] · [CREDITOR]</div>
-[na última ocorrência (data de vencimento mais futura), use esta classe destacada:]
-<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Vence: [SMOG DATE] · [CREDITOR]</div>
+<div class="r-detail">Realizado: [PAYMENT DATE] · Data smog: [SMOG DATE] · Vence: [SMOG DATE + 2 anos] · [CREDITOR]</div>
+[na ocorrência com vencimento mais futuro, use classe destacada:]
+<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Data smog: [SMOG DATE] · Vence: [SMOG DATE + 2 anos] · [CREDITOR]</div>
 </div>
 Se nenhum SMOG DATE encontrado: <div class="r-specific"><div class="r-yn no">✗ Smog não encontrado</div></div>
 
 1c. PERGUNTA SOBRE SAFETY (ex: "fez safety?", "quando vence o safety?"):
-Busque todos os registros do VIN que tenham SAFETY DATE preenchido.
+Busque todos os registros do VIN que tenham SAFETY DATE (coluna I) preenchido.
+A data de vencimento do safety = SAFETY DATE + 90 dias. Calcule isso para cada ocorrência.
 Responda SOMENTE com este HTML:
 <div class="r-specific">
 <div class="r-yn yes">✓ Safety realizado</div>
 [para cada ocorrência, do mais antigo ao mais recente:]
-<div class="r-detail">Realizado: [PAYMENT DATE] · Vence: [SAFETY DATE] · [CREDITOR]</div>
-[na última ocorrência (data de vencimento mais futura), use esta classe destacada:]
-<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Vence: [SAFETY DATE] · [CREDITOR]</div>
+<div class="r-detail">Realizado: [PAYMENT DATE] · Data safety: [SAFETY DATE] · Vence: [SAFETY DATE + 90 dias] · [CREDITOR]</div>
+[na ocorrência com vencimento mais futuro, use classe destacada:]
+<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Data safety: [SAFETY DATE] · Vence: [SAFETY DATE + 90 dias] · [CREDITOR]</div>
 </div>
 Se nenhum SAFETY DATE encontrado: <div class="r-specific"><div class="r-yn no">✗ Safety não encontrado</div></div>
 
 2. PERGUNTA GENÉRICA (ex: "quais serviços?", "histórico completo", "lista tudo"):
 Responda SOMENTE com este HTML — dois blocos:
 
-BLOCO 1 — tabela completa com todos os registros:
+BLOCO 1 — tabela completa agrupada por CATEGORY:
 <div class="r-table">
 <div class="r-car">[CAR] · VIN ···[últimos 6]</div>
-<table><thead><tr><th>Serviço</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>
-[uma tr por registro, ordenado por data, células vazias mostram —]
+<table><thead><tr><th>Categoria</th><th>Serviço / Peça</th><th>Data</th><th>Valor</th></tr></thead><tbody>
+[agrupe TODOS os registros por CATEGORY. Para cada grupo insira uma linha separadora:]
+<tr class="r-group-header"><td colspan="4">[CATEGORY]</td></tr>
+[depois uma tr por registro desse grupo, do mais recente ao mais antigo (PAYMENT DATE decrescente):]
+<tr><td>[CATEGORY]</td><td>[SUB GROUP] — [CREDITOR]</td><td>[PAYMENT DATE ou —]</td><td>[PRICE ou —]</td></tr>
+[NUNCA misture categorias — todos RECON juntos, todos BODY SHOP juntos, etc.]
 </tbody></table>
-<div class="r-total">Total geral: $[soma]</div>
+<div class="r-total">Total geral: $[soma de todos os PRICE]</div>
 </div>
 
 BLOCO 2 — resumo agrupado por CATEGORY logo abaixo:
