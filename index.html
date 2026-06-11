@@ -7,7 +7,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="SuperSac" />
 <meta name="theme-color" content="#0f0f13" />
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><text y='.9em' font-size='65' x='50%25' dominant-baseline='middle' text-anchor='middle'>🚗</text></svg>" />
 <title>Super Sac Auto — Assistente de Serviços</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -183,7 +182,6 @@
   .r-table th { text-align: left; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); padding: 5px 6px; border-bottom: 0.5px solid var(--color-border-secondary); }
   .r-table td { padding: 7px 6px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); vertical-align: top; }
   .r-table tr:last-child td { border-bottom: none; }
-  .r-table .r-group-header td { background: var(--surface2); color: var(--accent); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; border-bottom: 0.5px solid var(--border); border-top: 0.5px solid var(--border); }
   .r-total { font-size: 13px; font-weight: 500; text-align: right; padding-top: 6px; border-top: 0.5px solid var(--color-border-secondary); }
   .r-list { padding-left: 1.2rem; font-size: 14px; line-height: 2; }
   .r-highlight { background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 10px !important; color: var(--accent) !important; font-weight: 500; margin-top: 4px; }
@@ -196,12 +194,17 @@
   .r-summary-count { font-size: 12px; color: var(--text-muted); min-width: 50px; text-align: right; }
   .r-summary-val { min-width: 80px; text-align: right; color: var(--text); font-weight: 500; }
 
+  .r-table .r-group-header td { background: var(--surface2); color: var(--accent); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; border-bottom: 0.5px solid var(--border); border-top: 0.5px solid var(--border); }
+  .r-analysis { margin-top: 12px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 12px; padding: 1rem 1.25rem; }
+  .r-analysis-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 8px; }
+  .r-analysis-body { font-size: 13px; line-height: 1.7; color: var(--text-muted); }
+
   @media (max-width: 600px) {
     header { padding: 10px 14px; }
     .brand-name { font-size: 13px; }
     .brand-sub { display: none; }
     .brand-icon { width: 28px; height: 28px; font-size: 14px; }
-    main { padding: 10px 10px; gap: 10px; }
+    main { padding: 10px; gap: 10px; }
     .pills { gap: 6px; }
     .pill { font-size: 11px; padding: 5px 10px; }
     .chat-box { min-height: 300px; }
@@ -209,7 +212,7 @@
     .bubble { font-size: 13px; padding: 7px 11px; max-width: 90%; }
     .avatar { width: 24px; height: 24px; font-size: 10px; }
     .input-area { padding: 8px 10px; gap: 8px; }
-    .input-area input { font-size: 16px; padding: 9px 14px; } /* 16px prevents iOS zoom */
+    .input-area input { font-size: 16px; padding: 9px 14px; }
     .send-btn { width: 38px; height: 38px; }
     .r-table table { font-size: 12px; }
     .r-table th, .r-table td { padding: 6px 4px; }
@@ -441,29 +444,86 @@ Colunas da planilha:
 - PAYMENT METHOD: forma de pagamento
 - SOLD: se o carro foi vendido
 
-REGRAS:
-- Responda no mesmo idioma da pergunta (português ou inglês)
-- NUNCA diga "não encontrei" se receber dados — analise os dados fornecidos
-- NUNCA omita registros
-- Responda em texto corrido simples, sem markdown
+REGRAS DE FORMATO — siga rigorosamente:
 
-TIPOS DE PERGUNTA:
+1. PERGUNTA ESPECÍFICA (ex: "já trocou óleo?", "tem alinhamento?", "fez smog?"):
+Responda SOMENTE com este HTML:
+<div class="r-specific">
+<div class="r-yn yes">✓ Sim — [SUB GROUP]</div>
+<div class="r-detail">[PAYMENT DATE] · [PRICE] · [CREDITOR]</div>
+</div>
+Se não encontrado: <div class="r-specific"><div class="r-yn no">✗ Não encontrado</div></div>
+Se houver múltiplas ocorrências, repita r-detail para cada uma.
 
-1. PERGUNTA ESPECÍFICA (trocou óleo? fez smog? tem alinhamento? fez safety?):
-Responda diretamente: sim ou não, com data, valor e fornecedor.
-Para smog/safety: liste todas as ocorrências e destaque a mais recente como vigente.
+1b. PERGUNTA SOBRE SMOG (ex: "fez smog?", "quando vence o smog?"):
+Busque todos os registros do VIN que tenham SMOG DATE preenchido.
+Responda SOMENTE com este HTML:
+<div class="r-specific">
+<div class="r-yn yes">✓ Smog realizado</div>
+[para cada ocorrência, do mais antigo ao mais recente:]
+<div class="r-detail">Realizado: [PAYMENT DATE] · Vence: [SMOG DATE] · [CREDITOR]</div>
+[na última ocorrência (data de vencimento mais futura), use esta classe destacada:]
+<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Vence: [SMOG DATE] · [CREDITOR]</div>
+</div>
+Se nenhum SMOG DATE encontrado: <div class="r-specific"><div class="r-yn no">✗ Smog não encontrado</div></div>
 
-2. PERGUNTA GENÉRICA (só o VIN, "histórico", "serviços", "quais serviços foram feitos?"):
-Responda em TRÊS blocos separados por linha em branco:
+1c. PERGUNTA SOBRE SAFETY (ex: "fez safety?", "quando vence o safety?"):
+Busque todos os registros do VIN que tenham SAFETY DATE preenchido.
+Responda SOMENTE com este HTML:
+<div class="r-specific">
+<div class="r-yn yes">✓ Safety realizado</div>
+[para cada ocorrência, do mais antigo ao mais recente:]
+<div class="r-detail">Realizado: [PAYMENT DATE] · Vence: [SAFETY DATE] · [CREDITOR]</div>
+[na última ocorrência (data de vencimento mais futura), use esta classe destacada:]
+<div class="r-detail r-highlight">⭐ Vigente — Realizado: [PAYMENT DATE] · Vence: [SAFETY DATE] · [CREDITOR]</div>
+</div>
+Se nenhum SAFETY DATE encontrado: <div class="r-specific"><div class="r-yn no">✗ Safety não encontrado</div></div>
 
-BLOCO 1 — Tabela de todos os lançamentos agrupados por CATEGORY (ordem cronológica dentro de cada grupo). Inclua: serviço, fornecedor, data, valor, número de invoice se disponível.
+2. PERGUNTA GENÉRICA (ex: "quais serviços?", "histórico completo", "lista tudo"):
+Responda SOMENTE com este HTML — dois blocos:
 
-BLOCO 2 — Resumo financeiro por categoria: cada categoria com quantidade de itens e total gasto. Total geral excluindo PURCHASE. Total investido incluindo PURCHASE.
+BLOCO 1 — tabela completa com todos os registros:
+<div class="r-table">
+<div class="r-car">[CAR] · VIN ···[últimos 6]</div>
+<table><thead><tr><th>Serviço</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>
+[uma tr por registro, ordenado por data, células vazias mostram —]
+</tbody></table>
+<div class="r-total">Total geral: $[soma]</div>
+</div>
 
-BLOCO 3 — Análise do veículo em 3-5 linhas: status de venda (vendido ou disponível), principais serviços realizados, pendências (smog, safety, óleo), observações relevantes sobre o histórico.
+BLOCO 2 — resumo agrupado por CATEGORY logo abaixo:
+<div class="r-summary">
+<div class="r-summary-title">Resumo por categoria</div>
+<div class="r-summary-grid">
+[para cada CATEGORY única, uma div:]
+<div class="r-summary-item">
+  <span class="r-summary-cat">[CATEGORY]</span>
+  <span class="r-summary-count">[N itens]</span>
+  <span class="r-summary-val">$[soma da categoria]</span>
+</div>
+</div>
+<div class="r-total">Total investido: $[soma geral excluindo PURCHASE]</div>
+</div>
 
-3. ESTOQUE (carros não vendidos, o que temos?):
-Liste carros com SOLD=FALSE incluindo CAR e VIN.
+BLOCO 3 — análise do veículo em card separado:
+<div class="r-analysis">
+<div class="r-analysis-title">📋 Análise do Veículo</div>
+<div class="r-analysis-body">
+[3-5 linhas cobrindo: status de venda (disponível ou vendido), principais serviços realizados, pendências importantes como smog/safety/óleo, observações relevantes sobre o histórico do carro]
+</div>
+</div>
+
+3. ESTOQUE (ex: "carros não vendidos", "o que temos?"):
+Responda com lista HTML: <ul class="r-list"><li>[CAR] — VIN [VIN]</li></ul>
+
+Regras gerais:
+- Responda no mesmo idioma da pergunta
+- Nunca use markdown, apenas HTML puro
+- Se carro não encontrado, responda em texto simples
+- NUNCA omita registros — inclua TODOS os registros recebidos na tabela, sem exceção
+- SEMPRE calcule e mostre o total somando todos os valores de PRICE (ignore registros sem valor ou com valor $0.00 na soma)
+- Se PAYMENT DATE ou PRICE estiverem vazios num registro, mostre "—" na célula correspondente
+- Ordene os registros por PAYMENT DATE do mais antigo para o mais recente
 
 Dados da planilha:
 ${sample}`,
@@ -473,12 +533,8 @@ ${sample}`,
 
     const data = await res.json();
     removeTyping(typingId);
-    if (data.error) {
-      addMsg('assistant', '❌ Erro: ' + data.error.message);
-    } else {
-      const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
-      addMsg('assistant', reply || 'Não encontrei essa informação na planilha.');
-    }
+    const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+    addMsg('assistant', reply || 'Não encontrei essa informação na planilha.');
   } catch(e) {
     removeTyping(typingId);
     addMsg('assistant', '❌ Erro ao consultar. Verifique sua conexão e tente novamente.');
