@@ -270,7 +270,8 @@
 <script>
 const SHEET_ID = '1bswz7z_M-BRZGZmBYIJ3jH7MsvTuHon0KjdUtAxMows';
 const API_KEY  = 'AIzaSyC5I0b5DrsdB170SG8C8Uf-ly6ZP6qTB9k';
-const RANGE    = 'Flows Cars!A4:L5000';
+const RANGE      = 'Flows Cars!A4:L5000';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbylFHS5geVz01G-QY1GyMFRomqgs8mO_Pht0Lg_gq9TeuB7xpqGli2F1a0vfLRgY0d6/exec';
 
 let sheetData = [];
 let connected = false;
@@ -341,31 +342,46 @@ async function sendMsg() {
   input.disabled = true;
 
   try {
-    // BUSCA: VIN completo (17) > últimos 6 > ano/modelo > contexto (último carro)
+    // BUSCA: detecta se é VIN ou ano/modelo
     let filtered = [];
     const qClean = q.replace(/[^A-Z0-9 ]/gi, ' ').trim();
     let newCarFound = false;
+    let vin6Found = null;
 
-    // 1. VIN completo (17 chars)
+    // 1. VIN completo (17 chars) → extrai últimos 6
     const fullVinMatch = q.match(/\b([A-HJ-NPR-Z0-9]{17})\b/i);
     if (fullVinMatch) {
-      const vin = fullVinMatch[1].toUpperCase();
-      filtered = sheetData.filter(r => (r['VIN'] || '').toUpperCase() === vin);
-      if (filtered.length) newCarFound = true;
+      vin6Found = fullVinMatch[1].slice(-6).toUpperCase();
     }
 
-    // 2. Últimos 6 dígitos
-    if (!filtered.length) {
+    // 2. Últimos 6 dígitos direto
+    if (!vin6Found) {
       const last6Match = q.match(/\b([A-Z0-9]{6})\b/gi) || [];
       for (const t of last6Match) {
+        // confirma que existe na planilha
         const term = t.toUpperCase();
         const found = sheetData.filter(r => (r['VIN'] || '').toUpperCase().endsWith(term));
-        if (found.length) { filtered = found; newCarFound = true; break; }
+        if (found.length) { vin6Found = term; break; }
       }
     }
 
-    // 3. Ano + modelo
-    if (!filtered.length) {
+    // SE ACHOU VIN → usa Apps Script (Expense Report) rápido
+    if (vin6Found) {
+      try {
+        const scriptRes = await fetch(SCRIPT_URL + '?vin=' + vin6Found);
+        const scriptData = await scriptRes.json();
+        filtered = scriptData.rows || [];
+        if (filtered.length) {
+          newCarFound = true;
+          lastCar = { vin6: vin6Found, car: (filtered[0]['CAR'] || filtered[0][Object.keys(filtered[0])[1]] || ''), records: filtered };
+        }
+      } catch(e) {
+        console.error('Script fetch error:', e);
+      }
+    }
+
+    // 3. Ano + modelo → usa Flows Cars
+    if (!filtered.length && !vin6Found) {
       const stopwords = new Set(['QUAIS','FORAM','FEITO','FEITOS','SERVICO','SERVICOS','HISTORICO','COMPLETO','TROCOU','OLEO','ALINHOU','ALINHAMENTO','FEZ','TEM','JA','NAO','ESSE','CARRO','LISTA','TODO','TODOS','QUAL','TEVE','PARA','QUE','FOI']);
       const words = qClean.toUpperCase().split(/\s+/).filter(w => w.length >= 3 && !stopwords.has(w));
       if (words.length) {
@@ -373,7 +389,6 @@ async function sendMsg() {
         if (byCar.length) {
           const uniqueVins = [...new Set(byCar.map(r => (r['VIN'] || '').slice(-6)))];
           if (uniqueVins.length > 1) {
-            // Múltiplos carros — pede para escolher
             const cars = uniqueVins.map(v => {
               const row = byCar.find(r => (r['VIN'] || '').endsWith(v));
               return row ? row['CAR'] + ' — VIN ···' + v : v;
@@ -387,6 +402,8 @@ async function sendMsg() {
           }
           filtered = byCar;
           newCarFound = true;
+          const first = filtered[0];
+          lastCar = { vin6: (first['VIN'] || '').slice(-6), car: first['CAR'] || '', records: filtered };
         }
       }
     }
@@ -404,16 +421,6 @@ async function sendMsg() {
       document.getElementById('user-input').disabled = false;
       document.getElementById('user-input').focus();
       return;
-    }
-
-    // Atualiza contexto se achou um carro novo
-    if (newCarFound) {
-      const first = filtered[0];
-      lastCar = {
-        vin6: (first['VIN'] || '').slice(-6),
-        car: first['CAR'] || '',
-        records: filtered
-      };
     }
     const sample = JSON.stringify(filtered);
     const res = await fetch("https://api.anthropic.com/v1/messages", {
