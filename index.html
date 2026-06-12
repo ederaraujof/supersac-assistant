@@ -243,12 +243,19 @@
 
 <main>
   <div class="pills" id="pills" style="display:none;">
-    <span class="pill" onclick="askQuick('Trocou óleo?')">🔧 Troca de óleo</span>
-    <span class="pill" onclick="askQuick('Foi feito alinhamento?')">⚙️ Alinhamento</span>
-    <span class="pill" onclick="askQuick('Liste todos os serviços realizados.')">📋 Histórico completo</span>
-    <span class="pill" onclick="askQuick('Esse carro está vendido?')">🏷️ Status de venda</span>
-    <span class="pill" onclick="askQuick('Qual o total gasto nesse carro?')">💰 Total gasto</span>
-    <span class="pill" onclick="askQuick('Quais carros ainda não foram vendidos?')">🚗 Estoque atual</span>
+    <span class="pill" onclick="askQuick('Liste todos os carros disponíveis no lote que ainda não foram vendidos, com VIN e nome do carro.')">🚗 Carros no lote</span>
+    <span class="pill" onclick="checkRecallsNHTSA()">⚠️ Recalls NHTSA</span>
+    <span class="pill" onclick="askQuick('Liste todos os carros com SOLD=FALSE que NÃO têm nenhum registro de troca de óleo (OIL CHANGE, FULL SYN, LUBE ou similar no SUB GROUP).')">🔧 Óleo pendente</span>
+    <span class="pill" onclick="askQuick('Liste todos os carros com SOLD=FALSE que não têm SMOG DATE preenchido ou cujo SMOG DATE + 2 anos já venceu em relação a junho de 2026.')">💨 Smog pendente</span>
+    <span class="pill" onclick="askQuick('Liste todos os carros com SOLD=FALSE que não têm SAFETY DATE preenchido ou cujo SAFETY DATE + 90 dias já venceu em relação a junho de 2026.')">🛡️ Safety pendente</span>
+    <span class="pill" onclick="askQuick('Tabela de preços: liste todos os carros com SOLD=FALSE com VIN, nome do carro e custo total investido, do mais caro ao mais barato.')">💰 Tabela de preços</span>
+    <span class="pill" onclick="askQuick('Análise completa do carro atual: todos os investimentos por categoria, custo total, status de venda, pendências de smog/safety/óleo.')">📋 Análise do carro</span>
+    <span class="pill" onclick="askQuick('Quais peças foram compradas nesse carro?')">🔩 Peças</span>
+    <span class="pill" onclick="askQuick('Quais serviços foram feitos nesse carro?')">🔧 Serviços</span>
+    <span class="pill" onclick="askQuick('Tem trabalho de body shop nesse carro?')">🚗 Body Shop</span>
+    <span class="pill" onclick="askQuick('Tem serviço de mecânico nesse carro?')">⚙️ Mecânico</span>
+    <span class="pill" onclick="askQuick('Tem recall registrado na planilha para esse carro?')">📄 Recall planilha</span>
+    <span class="pill" onclick="askQuick('Qual o custo total investido nesse carro?')">💵 Custo total</span>
   </div>
 
   <div class="chat-box">
@@ -322,6 +329,64 @@ async function loadSheet() {
     addMsg('assistant', `❌ Erro ao conectar com a planilha: <strong>${e.message}</strong><br>Clique em "↻ Atualizar" para tentar novamente.`);
     console.error(e);
   }
+}
+
+async function checkRecallsNHTSA() {
+  if (!connected) return;
+
+  // Get unique VINs from unsold cars
+  const vinMap = {};
+  sheetData.forEach(r => {
+    const vin = (r['VIN'] || '').trim();
+    const sold = (r['SOLD'] || '').toString().toUpperCase();
+    if (vin.length === 17 && sold !== 'TRUE') {
+      vinMap[vin] = r['CAR'] || vin;
+    }
+  });
+
+  const vins = Object.entries(vinMap);
+  if (!vins.length) {
+    addMsg('assistant', 'Nenhum carro disponível no lote encontrado.');
+    return;
+  }
+
+  addMsg('user', '⚠️ Verificar Recalls NHTSA — ' + vins.length + ' carros no lote');
+  const typingId = addTyping();
+
+  const results = [];
+  const errors = [];
+
+  for (const [vin, car] of vins) {
+    try {
+      const res = await fetch(`https://api.nhtsa.gov/recalls/recallsByVehicleId?vinId=${vin}`);
+      const data = await res.json();
+      const recalls = data.results || [];
+      if (recalls.length > 0) {
+        results.push({ vin, car, recalls });
+      }
+    } catch(e) {
+      errors.push(vin);
+    }
+  }
+
+  removeTyping(typingId);
+
+  if (!results.length) {
+    addMsg('assistant', `<div class="r-specific"><div class="r-yn yes">✓ Nenhum recall encontrado na NHTSA para os ${vins.length} carros no lote.</div></div>`);
+    return;
+  }
+
+  let html = `<div class="r-table"><div class="r-car">⚠️ Recalls NHTSA — ${results.length} carro(s) com recall</div><table><thead><tr><th>Carro</th><th>VIN</th><th>Componente</th><th>Descrição</th></tr></thead><tbody>`;
+  
+  for (const { vin, car, recalls } of results) {
+    html += `<tr class="r-group-header"><td colspan="4">${car} — VIN ···${vin.slice(-6)}</td></tr>`;
+    for (const r of recalls) {
+      html += `<tr><td>${r.Component || '—'}</td><td>${vin.slice(-6)}</td><td colspan="2">${r.Summary || r.Consequence || '—'}</td></tr>`;
+    }
+  }
+
+  html += `</tbody></table><div class="r-total">${results.length} carro(s) com recall de ${vins.length} verificados</div></div>`;
+  addMsg('assistant', html);
 }
 
 function askQuick(q) {
@@ -408,12 +473,19 @@ async function sendMsg() {
       }
     }
 
-    // 4. Sem identificador novo — usa último carro consultado (contexto)
+    // 4. Consulta global (toda a frota)
+    const globalKeywords = ['lote','vendidos','recalls','recall','óleo pendente','oleo pendente','smog pendente','safety pendente','tabela de preço','tabela de precos','frota','estoque'];
+    const isGlobal = globalKeywords.some(k => q.toLowerCase().includes(k));
+    if (!filtered.length && isGlobal) {
+      filtered = sheetData;
+    }
+
+    // 5. Sem identificador novo — usa último carro consultado (contexto)
     if (!filtered.length && lastCar) {
       filtered = lastCar.records;
     }
 
-    // 5. Sem resultado nenhum
+    // 6. Sem resultado nenhum
     if (!filtered.length) {
       removeTyping(typingId);
       addMsg('assistant', 'Não encontrei nenhum carro. Informe o VIN completo, os 6 últimos dígitos ou o ano/modelo.');
@@ -453,18 +525,45 @@ Colunas da planilha:
 
 REGRAS DE FORMATO — siga rigorosamente:
 
-1. PERGUNTA ESPECÍFICA (ex: "já trocou óleo?", "tem alinhamento?", "fez smog?"):
-Para identificar o serviço, analise CATEGORY e SUB GROUP juntos:
-- Óleo: SUB GROUP contém OIL, LUBE, FILTER, SYN, SYNTHETIC ou similar
-- Alinhamento: SUB GROUP contém ALIGN, WHEEL, CAMBER ou similar
-- Freio: SUB GROUP contém BRAKE, PAD, ROTOR ou similar
+1. PERGUNTA POR CATEGORIA ESPECÍFICA:
+Mapeamento de palavras-chave para CATEGORY:
+- "peças", "recon", "parts" → RECON
+- "funilaria", "body shop", "lataria" → BODY SHOP
+- "serviço", "service" → SERVICE
+- "mecânico", "mechanic", "mecanica" → MECANIC
+- "frete", "shipping", "reboque", "towing" → SHIPPING
+- "recall" → RECALL
+- "compra", "purchase", "comprou" → PURCHASE
+- "gas", "gasolina", "combustível" → GAS
+- "material" → MATERIAL
+- "taxa", "fee" → FEE
+- "flooring", "kinetic" → FLOORING FEE
+- "reembolso", "refund" → REFUND COST
+- "imposto", "tax", "taxes" → TAX ou TAXES PENALTY
+- "cliente", "customer" → CUSTOMER
+
+Quando identificar uma categoria específica, filtre os registros por aquela CATEGORY e responda com tabela:
+<div class="r-table">
+<div class="r-car">[CAR] · VIN ···[últimos 6] · [CATEGORY filtrada]</div>
+<table><thead><tr><th>Serviço / Peça</th><th>Fornecedor</th><th>Data</th><th>Valor</th></tr></thead><tbody>
+[uma tr por registro filtrado, do mais recente ao mais antigo]
+</tbody></table>
+<div class="r-total">Total [CATEGORY]: $[soma]</div>
+</div>
+Se não encontrado: <div class="r-specific"><div class="r-yn no">✗ Nenhum registro de [categoria] encontrado</div></div>
+
+1b. PERGUNTA ESPECÍFICA DE SERVIÇO (ex: "trocou óleo?", "fez alinhamento?", "fez smog?"):
+Para identificar o serviço, analise SUB GROUP:
+- Óleo: OIL, LUBE, FILTER, SYN, SYNTHETIC
+- Alinhamento: ALIGN, WHEEL ALIGNMENT, CAMBER
+- Freio: BRAKE, PAD, ROTOR
 Responda SOMENTE com este HTML:
 <div class="r-specific">
-<div class="r-yn yes">✓ Sim — [descreva claramente o serviço, ex: "Troca de óleo — FULL SYN + FILTER"]</div>
+<div class="r-yn yes">✓ Sim — [descreva o serviço claramente]</div>
 <div class="r-detail">[PAYMENT DATE] · [PRICE] · [CREDITOR]</div>
 </div>
 Se não encontrado: <div class="r-specific"><div class="r-yn no">✗ Não encontrado</div></div>
-Se houver múltiplas ocorrências, repita r-detail para cada uma.
+Se múltiplas ocorrências, repita r-detail para cada uma.
 
 1b. PERGUNTA SOBRE SMOG (ex: "fez smog?", "quando vence o smog?"):
 Busque todos os registros do VIN que tenham SMOG DATE (coluna H) preenchido.
@@ -530,8 +629,38 @@ BLOCO 3 — análise do veículo em card separado:
 </div>
 </div>
 
-3. ESTOQUE (ex: "carros não vendidos", "o que temos?"):
-Responda com lista HTML: <ul class="r-list"><li>[CAR] — VIN [VIN]</li></ul>
+3. CONSULTAS GLOBAIS (sobre toda a frota, não um carro específico):
+
+3a. ESTOQUE / CARROS NO LOTE (ex: "carros não vendidos", "carros no lote"):
+Filtre registros com SOLD=FALSE, agrupe por VIN único.
+<ul class="r-list"><li>🚗 [CAR] — VIN ···[últimos 6]</li></ul>
+
+3b. RECALLS EM ABERTO (ex: "recalls em aberto"):
+Filtre registros com CATEGORY=RECALL, agrupe por VIN único.
+<ul class="r-list"><li>⚠️ [CAR] — VIN ···[últimos 6] — [SUB GROUP]</li></ul>
+Se nenhum: <div class="r-specific"><div class="r-yn yes">✓ Nenhum recall registrado</div></div>
+
+3c. ÓLEO PENDENTE (ex: "carros sem troca de óleo"):
+Identifique VINs únicos que NÃO têm nenhum registro com OIL, LUBE, SYN, SYNTHETIC, FILTER no SUB GROUP. Considere apenas carros com SOLD=FALSE.
+<ul class="r-list"><li>🔧 [CAR] — VIN ···[últimos 6]</li></ul>
+
+3d. SMOG PENDENTE (ex: "smog pendente"):
+Identifique carros com SOLD=FALSE que não têm SMOG DATE, ou cujo SMOG DATE + 2 anos já passou de hoje (June 2026).
+<ul class="r-list"><li>💨 [CAR] — VIN ···[últimos 6] — Vence: [data ou "Sem registro"]</li></ul>
+
+3e. SAFETY PENDENTE (ex: "safety pendente"):
+Identifique carros com SOLD=FALSE que não têm SAFETY DATE, ou cujo SAFETY DATE + 90 dias já passou de hoje (June 2026).
+<ul class="r-list"><li>🛡️ [CAR] — VIN ···[últimos 6] — Vence: [data ou "Sem registro"]</li></ul>
+
+3f. TABELA DE PREÇOS (ex: "tabela de preços"):
+Agrupe por VIN único, some todos os PRICE de cada VIN (somente SOLD=FALSE), mostre do mais caro ao mais barato.
+<div class="r-table">
+<div class="r-car">Tabela de Custos — Carros no Lote</div>
+<table><thead><tr><th>Carro</th><th>VIN</th><th>Custo Total</th></tr></thead><tbody>
+[uma tr por carro, ordenado por custo decrescente]
+</tbody></table>
+<div class="r-total">Total investido no lote: $[soma geral]</div>
+</div>
 
 Regras gerais:
 - Responda no mesmo idioma da pergunta
