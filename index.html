@@ -433,7 +433,7 @@ async function sendMsg() {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 2000,
+        max_tokens: 8000,
         system: `Carro em contexto atual: ${lastCar ? lastCar.car + ' (VIN ···' + lastCar.vin6 + ')' : 'nenhum'}\n\nVocê é o assistente interno da Super Sac Auto, uma revenda de carros usados em Carmichael, CA.
 Você tem acesso à planilha de serviços e despesas dos veículos.
 
@@ -499,11 +499,11 @@ BLOCO 1 — tabela completa agrupada por CATEGORY:
 <div class="r-table">
 <div class="r-car">[CAR] · VIN ···[últimos 6]</div>
 <table><thead><tr><th>Categoria</th><th>Serviço / Peça</th><th>Data</th><th>Valor</th></tr></thead><tbody>
-[agrupe TODOS os registros por CATEGORY. Para cada grupo insira uma linha separadora:]
+[agrupe TODOS os registros por CATEGORY. Cada CATEGORY aparece UMA ÚNICA VEZ como cabeçalho, mesmo que os registros estejam espalhados na planilha. Colete TODOS os registros de cada categoria antes de renderizar:]
 <tr class="r-group-header"><td colspan="4">[CATEGORY]</td></tr>
 [depois uma tr por registro desse grupo, do mais recente ao mais antigo (PAYMENT DATE decrescente):]
 <tr><td>[CATEGORY]</td><td>[SUB GROUP] — [CREDITOR]</td><td>[PAYMENT DATE ou —]</td><td>[PRICE ou —]</td></tr>
-[NUNCA misture categorias — todos RECON juntos, todos BODY SHOP juntos, etc.]
+[CRÍTICO: NUNCA repita o cabeçalho de uma categoria — agrupe todos os RECON juntos, todos BODY SHOP juntos, etc. em um único bloco por categoria]
 </tbody></table>
 <div class="r-total">Total geral: $[soma de todos os PRICE]</div>
 </div>
