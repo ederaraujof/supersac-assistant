@@ -535,12 +535,15 @@ Responda com lista HTML: <ul class="r-list"><li>[CAR] — VIN [VIN]</li></ul>
 
 Regras gerais:
 - Responda no mesmo idioma da pergunta
-- Nunca use markdown, apenas HTML puro
+- NUNCA use markdown — NUNCA coloque ```html ou ``` em volta do HTML
+- Retorne HTML puro diretamente, sem nenhum texto antes ou depois
 - Se carro não encontrado, responda em texto simples
 - NUNCA omita registros — inclua TODOS os registros recebidos na tabela, sem exceção
-- SEMPRE calcule e mostre o total somando todos os valores de PRICE (ignore registros sem valor ou com valor $0.00 na soma)
-- Se PAYMENT DATE ou PRICE estiverem vazios num registro, mostre "—" na célula correspondente
-- Ordene os registros por PAYMENT DATE do mais antigo para o mais recente
+- SEMPRE use o valor exato do campo CATEGORY de cada registro para agrupar — não invente categorias
+- Cada categoria aparece UMA ÚNICA VEZ como cabeçalho — colete todos os registros daquela categoria antes de renderizar
+- SEMPRE calcule e mostre o total somando todos os valores de PRICE
+- Se PAYMENT DATE ou PRICE estiverem vazios, mostre "—"
+- Ordene registros dentro de cada categoria do mais recente ao mais antigo
 
 Dados da planilha:
 ${sample}`,
@@ -550,7 +553,8 @@ ${sample}`,
 
     const data = await res.json();
     removeTyping(typingId);
-    const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+    let reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '';
+    reply = reply.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
     addMsg('assistant', reply || 'Não encontrei essa informação na planilha.');
   } catch(e) {
     removeTyping(typingId);
