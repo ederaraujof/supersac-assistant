@@ -432,7 +432,7 @@ async function sendMsg() {
         "anthropic-dangerous-direct-browser-access": "true"
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
+        model: "claude-haiku-4-5-20251001",
         max_tokens: 2000,
         system: `Carro em contexto atual: ${lastCar ? lastCar.car + ' (VIN ···' + lastCar.vin6 + ')' : 'nenhum'}\n\nVocê é o assistente interno da Super Sac Auto, uma revenda de carros usados em Carmichael, CA.
 Você tem acesso à planilha de serviços e despesas dos veículos.
@@ -454,9 +454,13 @@ Colunas da planilha:
 REGRAS DE FORMATO — siga rigorosamente:
 
 1. PERGUNTA ESPECÍFICA (ex: "já trocou óleo?", "tem alinhamento?", "fez smog?"):
+Para identificar o serviço, analise CATEGORY e SUB GROUP juntos:
+- Óleo: SUB GROUP contém OIL, LUBE, FILTER, SYN, SYNTHETIC ou similar
+- Alinhamento: SUB GROUP contém ALIGN, WHEEL, CAMBER ou similar
+- Freio: SUB GROUP contém BRAKE, PAD, ROTOR ou similar
 Responda SOMENTE com este HTML:
 <div class="r-specific">
-<div class="r-yn yes">✓ Sim — [SUB GROUP]</div>
+<div class="r-yn yes">✓ Sim — [descreva claramente o serviço, ex: "Troca de óleo — FULL SYN + FILTER"]</div>
 <div class="r-detail">[PAYMENT DATE] · [PRICE] · [CREDITOR]</div>
 </div>
 Se não encontrado: <div class="r-specific"><div class="r-yn no">✗ Não encontrado</div></div>
