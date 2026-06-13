@@ -517,8 +517,8 @@ async function sendMsg() {
               model: "claude-haiku-4-5-20251001",
               max_tokens: 1000,
               tools: [{ type: "web_search_20250305", name: "web_search" }],
-              system: "You are a car market research assistant for a used car dealership that buys salvage vehicles and resells them as rebuilt title. Search for current market prices with these STRICT rules: (1) Rebuilt title price MUST always be 20-40% LESS than clean title — if your search results show rebuilt higher than clean, the data is wrong, discard it and use the 20-40% discount formula instead; (2) Search specifically for listings explicitly mentioning 'rebuilt title' or 'salvage title' in the listing; (3) Do NOT include clean title listings in the rebuilt/salvage price ranges. Return: salvage title asking price range (vehicles still damaged for sale at auction/dealer), rebuilt title California asking price range (reconditioned vehicles with rebuilt title), rebuilt title national asking price range, clean title price for reference only. Always clarify that rebuilt title should be 20-40% below clean title. Format as plain text, 5-6 lines. Search in English.",
-              messages: [{ role: "user", content: `Search June 2026 market prices for: ${carName}. Find listings explicitly with "rebuilt title" and "salvage title" keywords. Search: "${carName} rebuilt title for sale site:autotrader.com OR site:cargurus.com OR site:cars.com", "${carName} salvage title for sale". Clean title reference only from KBB or similar. Rebuilt MUST be lower than clean title.` }]
+              system: "You are a car market research assistant. Search for clean title retail market prices only. Find: (1) California regional average price from AutoTrader, CarGurus or Cars.com listings; (2) National average price from KBB, Edmunds or similar. Return only 3 lines: CA market price range, National market price range, and source used. Be specific with dollar amounts. No commentary.",
+              messages: [{ role: "user", content: `Find current June 2026 clean title retail market prices for: ${carName}. Search AutoTrader CarGurus Cars.com for California listings and KBB Edmunds for national average. Return CA price range and national price range only.` }]
             })
           });
           const marketData = await marketRes.json();
@@ -669,12 +669,11 @@ Se houver dados de PREÇO DE MERCADO fornecidos, adicione um bloco extra:
 <div class="r-analysis-title">💰 Preço de Mercado</div>
 <div class="r-analysis-body">
 [Liste claramente:]
-🔴 Salvage title (à venda ainda danificado): $[range]
-🟡 Rebuilt title California (recondicionado): $[range]
-🟡 Rebuilt title Nacional: $[range]
-🟢 Clean title (referência): $[range]
+📍 Preço clean title California: $[range]
+🌎 Preço clean title Nacional: $[range]
+💡 Sua margem de 20-40% sobre o preço CA: $[CA mínimo * 0.6] — $[CA máximo * 0.8]
 [Linha em branco]
-📊 Margem estimada: Rebuilt CA médio ($X) - Custo total investido ($Y) = $Z de margem potencial
+📊 Margem estimada (20-40% abaixo do CA): Preço venda estimado ($X) - Custo total investido ($Y) = $Z lucro potencial
 </div>
 </div>
 
