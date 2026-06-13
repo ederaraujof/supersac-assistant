@@ -517,8 +517,8 @@ async function sendMsg() {
               model: "claude-haiku-4-5-20251001",
               max_tokens: 1000,
               tools: [{ type: "web_search_20250305", name: "web_search" }],
-              system: "You are a car market research assistant. Search for current market prices of the given vehicle. Return a concise summary in the same language as the car name, covering: average clean title price in California, average salvage/rebuilt title price in California, national average clean title price, and national average salvage price. Use sources like CarGurus, AutoTrader, KBB, Copart, IAAI. Be specific with dollar amounts. Format as plain text, 4-5 lines max.",
-              messages: [{ role: "user", content: `Search current market prices for: ${carName}. Include clean title vs salvage title prices, California region and national average. Current date: June 2026.` }]
+              system: "You are a car market research assistant for a used car dealership. Search for current market prices of the given vehicle focusing on salvage and rebuilt title prices since the dealer buys salvage vehicles and resells them as rebuilt. Search for: (1) salvage title listings for sale on AutoTrader, CarGurus, Cars.com, eBay Motors; (2) rebuilt title listings for sale in California and nationally; (3) clean title price as reference. Return a concise summary covering: salvage title asking price range, rebuilt title asking price range in California, rebuilt title national average, clean title price for reference. Be specific with dollar amounts. Format as plain text, 5-6 lines max. Always search in English regardless of input language.",
+              messages: [{ role: "user", content: `Search current market prices June 2026 for: ${carName}. Search these specifically: "${carName} salvage title for sale", "${carName} rebuilt title for sale California", "${carName} rebuilt title for sale". Show price ranges for salvage listing price, rebuilt title California, rebuilt title national, and clean title for reference.` }]
             })
           });
           const marketData = await marketRes.json();
@@ -668,7 +668,13 @@ Se houver dados de PREÇO DE MERCADO fornecidos, adicione um bloco extra:
 <div class="r-analysis">
 <div class="r-analysis-title">💰 Preço de Mercado</div>
 <div class="r-analysis-body">
-[Liste: preço médio clean title CA, preço médio salvage CA, média nacional clean title, média nacional salvage. Calcule a margem estimada: preço mercado salvage CA - custo total investido]
+[Liste claramente:]
+🔴 Salvage title (à venda ainda danificado): $[range]
+🟡 Rebuilt title California (recondicionado): $[range]
+🟡 Rebuilt title Nacional: $[range]
+🟢 Clean title (referência): $[range]
+[Linha em branco]
+📊 Margem estimada: Rebuilt CA médio ($X) - Custo total investido ($Y) = $Z de margem potencial
 </div>
 </div>
 
